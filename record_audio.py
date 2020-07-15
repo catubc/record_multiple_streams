@@ -6,7 +6,6 @@ import cv2
 import time
 
 import nidaqmx
-import nidaqmx
 from nidaqmx.constants import AcquisitionType
 import sys
 
@@ -35,9 +34,12 @@ def record_audio(root_dir, duration, start_time):
 
         task.timing.cfg_samp_clk_timing(s_freq,
                                        sample_mode = AcquisitionType.CONTINUOUS)
-
-
+        #nidaqmx._task_modules.channels.ai_channel.AIChannel.ai_max = 3.3
+        #nidaqmx._task_modules.channels.ai_channel.AIChannel.ai_min = -3.3
+        #print ("Voltages: ", task.ai_channels.all.ai_max, task.ai_channels.all.ai_min)
+        
         data1 = task.read(number_of_samples_per_channel=num_samples, timeout = nidaqmx.constants.WAIT_INFINITELY)
+
 
     data1=np.array(data1)
     print (data1.shape)

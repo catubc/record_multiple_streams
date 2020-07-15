@@ -1,21 +1,17 @@
-import matplotlib
-
-
+# imports
 import numpy as np
 import datetime 
 import cv2
 import time
-
-import nidaqmx
-import nidaqmx
-from nidaqmx.constants import AcquisitionType
+import os
 
 import PySpin
 
 import sys
 
 def setup_camera():
-    
+    print ("SETUP VIDEO RECORDING STAGE #1")
+
     # Retrieve singleton reference to system object
     system = PySpin.System.GetInstance()
 
@@ -24,10 +20,11 @@ def setup_camera():
     print('Library version: %d.%d.%d.%d' % (version.major, version.minor, 
                                             version.type, version.build))
     
-    
     return system
 
-def setup2(system, FPS, duration, epochs):
+def setup2(system, FPS, duration):
+    print ("SETUP VIDEO RECORDING STAGE #2")
+
     # Retrieve list of cameras from the system
     cam_list = system.GetCameras()
     num_cameras = cam_list.GetSize()
@@ -81,58 +78,93 @@ def setup2(system, FPS, duration, epochs):
     return cam, option, size
     
 # record video    
-def record_video(root_dir, system, FPS, cam, option, size, start_time):
-    import cv2, os
-    from dateutil import tz
-    UTC = tz.gettz('UTC')
+def record_video(root_dir, system, FPS, cam, 
+				 option, size, start_time,
+				 ttl_device):
 
-    print ("STARTING SETUP RECORDING")
+    print ("STARTING RECORDING")
     try: 
         cam.EndAcquisition()
     except:
         pass
 
+	# initialize time stamps for camera internal clock
+    times_gpu_clock=[]
+
+	# initialize time stamps for randomized ttl pulse
+    ttl_ctr = 0
+    ttl_times_requested = np.arange(0,duration, 3)
+    ttl_times_actual = []
+	
+	# start a new video file
+    cv2_file = os.path.join(root_dir,'video',start_time+'.avi')
+    out = cv2.VideoWriter(cv2_file,cv2.VideoWriter_fourcc(*'DIVX'), FPS, size)
+
+	# start clock
+    start_time_pc = datetime.datetime.utcnow().timestamp()
+
+	# start video acquisition and grab individual video files
+    cam.BeginAcquisition()
+
+	# grab individual video frames
+    for k in range(int(option.frameRate)*duration):
+        image_result = cam.GetNextImage()
+		
+        time_pc = datetime.datetime.utcnow().timestamp()
+		
+        time_gpu = image_result.GetTimeStamp()
+
+        times_gpu_clock.append(time_gpu*1E-9)
+		
+        if k%100==0:
+            print("Frame: ", k, "start_time: ", time_gpu)
+
+		# convert image to bgr for saving
+        images_avi = image_result.Convert(PySpin.PixelFormat_BGR8)
+
+		# add image to opencv avi file
+        out.write(images_avi.GetData().reshape((1024, 1280, 3)))
+
+		# release iamge
+        image_result.Release()
+
+        try:
+            if (time_pc-start_time_pc)>ttl_times_requested[ttl_ctr]:
+                ttl_device.write(b'0x00')     # trigger camera
+                print ("Saved TTL time: ", time_pc)
+                ttl_times_actual.append(time_pc)
+                ttl_ctr+=1            
+        except:
+            pass    
+
+	# close the video recording
+    out.release()
+
+	# close the camera
+    cam.EndAcquisition()
+			
+    np.savetxt(os.path.join(root_dir,'times',start_time+'_frame_times_gpu_clock.txt'),times_gpu_clock, fmt='%f')
+
+    np.savetxt(os.path.join(root_dir,'times',start_time+'_ttl_times_pc_clock.txt'),ttl_times_actual, fmt='%f')
+    np.savetxt(os.path.join(root_dir,'times',start_time+'_start_time_pc_clock.txt'),[start_time_pc], fmt='%f')
+		
+		
+def setup_serial_port():
+	import serial
+	ttl_device = serial.Serial(
+		port='COM3',
+		baudrate = 24000,
+		parity='N',
+		stopbits=1,
+		bytesize=8,
+		timeout=1
+	)
+	
+	return ttl_device
+
+# launch 
 
 
-    for epoch in epochs:
-        print ("starting epoch: ", epoch)
-        # initialize time stamps for camera
-        times=[]
-
-        # start a new video file
-        cv2_file = os.path.join(root_dir,'video',start_time+'.avi')
-        out = cv2.VideoWriter(cv2_file,cv2.VideoWriter_fourcc(*'DIVX'), FPS, size)
-
-        # start video acquisition and grab individual video files
-        cam.BeginAcquisition()
-
-        # grab individual video frames
-        for k in range(int(option.frameRate)*duration):
-
-            image_result = cam.GetNextImage()
-            
-            time = image_result.GetTimeStamp()
-
-            times.append(time)
-            if k%100==0:
-                print("Frame: ", k, "start_time: ", time)
-
-            # convert image to bgr for saving
-            images_avi = image_result.Convert(PySpin.PixelFormat_BGR8)
-
-            # add image to opencv avi file
-            out.write(images_avi.GetData().reshape((1024, 1280, 3)))
-
-            # release iamge
-            image_result.Release()
-
-        # close the video recording
-        out.release()
-
-        # close the camera
-        cam.EndAcquisition()
-                
-        np.savetxt(os.path.join(root_dir,'times',start_time+'_frame_times.txt'),times, fmt="%s")
 
 
 if __name__ == '__main__':
@@ -142,17 +174,18 @@ if __name__ == '__main__':
 	root_dir = sys.argv[1]
 	duration = int(sys.argv[2])
 	start_time = str(sys.argv[3])
-
+	#n_epochs = int(sys.argv[4])
 
 	FPS = int(25)
-	#duration = 10
-	epochs = [0]
+
+	# setup TTL pulse
+	ttl_device = setup_serial_port()
 
 	# setup camera stage 1
 	system = setup_camera()
 
 	# setup camera stage 2
-	cam, option, size  = setup2(system, FPS, duration, epochs)
+	cam, option, size  = setup2(system, FPS, duration)
 
 	# record video
-	record_video(root_dir, system, FPS, cam, option, size, start_time)
+	record_video(root_dir, system, FPS, cam, option, size, start_time, ttl_device)

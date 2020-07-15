@@ -15,19 +15,23 @@ import matplotlib.pyplot as plt
 import PySpin
 import os
 
-import simpleaudio as sa
+#import simpleaudio as sa
+import playsound
 
 def play_beeps(duration, root_dir, wav_fname, start_time):
     #wav_fname = r"C:\Users\cm5635\Downloads\audiocheck.net_sin_7000Hz_0dBFS_.1s.wav"
     #wave_obj = sa.WaveObject.from_wave_read(fname)#from_wave_file("/home/cat/audio.wav")
     #wav_fname = os.path.join('E:/audiocheck.net_sin_7000Hz_0dBFS_.1s.wav')
-    wave_obj = sa.WaveObject.from_wave_file(wav_fname)
-    play_obj = wave_obj.play()
+    
+    #wave_obj = sa.WaveObject.from_wave_file(wav_fname)
+    #play_obj = wave_obj.play()
+    playsound.playsound(wav_fname)
     ctr=1
 
     pc_time_utc_sec = datetime.datetime.utcnow().timestamp()
 
     times_click = np.arange(duration)
+    print ("TIMES CLICKK", times_click)
     times_idx = 0
     times = []
     while True:
@@ -37,7 +41,9 @@ def play_beeps(duration, root_dir, wav_fname, start_time):
         if (now -pc_time_utc_sec)> times_click[times_idx]:
             #ser_led.write(b'0x00')     # trigger camera
             #ser_speaker.write(b'0x00')     # trigger camera
-            play_obj = wave_obj.play()
+            #play_obj = wave_obj.play()
+            playsound.playsound(wav_fname)
+
             times.append(now-pc_time_utc_sec)
             #print ("  Done waiting ")
             print ("click time ", times_click[times_idx], " sec")

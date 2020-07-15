@@ -8,6 +8,7 @@ import serial
 import os
 
 import sounddevice as sd
+import sys
 
 import serial
 ser_speaker = serial.Serial(
