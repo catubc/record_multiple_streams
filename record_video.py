@@ -75,7 +75,7 @@ def setup2(system, FPS, duration):
     
     print ("DONE SETUP CAMERA")
     
-    return cam, option, size
+    return cam, option, size, framerate_to_set
     
 # record video    
 def record_video(root_dir, system, FPS, cam, 
@@ -88,16 +88,32 @@ def record_video(root_dir, system, FPS, cam,
     except:
         pass
 
+	# make additional directory for particular epoch:
+    try:
+        os.mkdir(os.path.join(root_dir,'times',start_time))
+    except: 
+        print ("COULDN'T MAKE DIRECTORY")
+		
+    try:
+        os.mkdir(os.path.join(root_dir,'video',start_time))
+    except: 
+        print ("COULDN'T MAKE DIRECTORY")
+        
 	# initialize time stamps for camera internal clock
     times_gpu_clock=[]
 
 	# initialize time stamps for randomized ttl pulse
     ttl_ctr = 0
-    ttl_times_requested = np.arange(0,duration, 3)
+    ttl_times_requested = np.arange(0,duration, 1)
+    #ttl_times_requested = np.float32(np.arange(0,duration, 30))[1:]
+   # ttl_times_requested += np.random.rand(ttl_times_requested.shape[0])*30
+    
+    # save array with actual times based on PC clock
     ttl_times_actual = []
 	
 	# start a new video file
-    cv2_file = os.path.join(root_dir,'video',start_time+'.avi')
+    cv2_file = os.path.join(root_dir,'video',start_time, start_time+'.avi')
+    print ("SAVING VIDEO TO: ", cv2_file)
     out = cv2.VideoWriter(cv2_file,cv2.VideoWriter_fourcc(*'DIVX'), FPS, size)
 
 	# start clock
@@ -142,11 +158,21 @@ def record_video(root_dir, system, FPS, cam,
 
 	# close the camera
     cam.EndAcquisition()
-			
-    np.savetxt(os.path.join(root_dir,'times',start_time+'_frame_times_gpu_clock.txt'),times_gpu_clock, fmt='%f')
+    
+    # save data
 
-    np.savetxt(os.path.join(root_dir,'times',start_time+'_ttl_times_pc_clock.txt'),ttl_times_actual, fmt='%f')
-    np.savetxt(os.path.join(root_dir,'times',start_time+'_start_time_pc_clock.txt'),[start_time_pc], fmt='%f')
+			
+	# save GPU frame time stamps
+    np.savetxt(os.path.join(root_dir,'times',start_time, start_time+'_frame_times_gpu_clock.txt'),times_gpu_clock, fmt='%f')
+
+    # save ttl pulses on PC clock
+    np.savetxt(os.path.join(root_dir,'times',start_time, start_time+'_ttl_times_pc_clock.txt'),ttl_times_actual, fmt='%f')
+
+    # save ttl pulses on PC clock
+    np.savetxt(os.path.join(root_dir,'times',start_time, start_time+'_ttl_times_requested.txt'),ttl_times_requested, fmt='%f')
+    
+    # save starting time of cam acquisition on PC Clock
+    np.savetxt(os.path.join(root_dir,'times',start_time, start_time+'_start_time_pc_clock.txt'),[start_time_pc], fmt='%f')
 		
 		
 def setup_serial_port():
@@ -166,10 +192,9 @@ def setup_serial_port():
 
 
 
-
 if __name__ == '__main__':
 	# initialize recordings recording
-	root_dir = r"E:\july_8_gerbil2"
+	#root_dir = r"E:\july_8_gerbil2"
 
 	root_dir = sys.argv[1]
 	duration = int(sys.argv[2])
@@ -185,7 +210,7 @@ if __name__ == '__main__':
 	system = setup_camera()
 
 	# setup camera stage 2
-	cam, option, size  = setup2(system, FPS, duration)
+	cam, option, size, framerate_to_set  = setup2(system, FPS, duration)
 
 	# record video
-	record_video(root_dir, system, FPS, cam, option, size, start_time, ttl_device)
+	record_video(root_dir, system, framerate_to_set, cam, option, size, start_time, ttl_device)

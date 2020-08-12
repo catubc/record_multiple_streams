@@ -11,22 +11,31 @@ def run_process(process):
 if __name__ == '__main__':
 	    
 	  # if playing back wav file
-	  duration = '5'  #PDF = r'C:\Users\user\Desktop\File_%s.pdf' % ite
+	  duration = '10'  # number of seconds per recording epoch (i.e. chunk of data)
+      
+      # number of epochs of recording:
+	  n_hours = 500
+	  n_epochs = int((n_hours*3600)/int(duration))
+	  n_epochs = 1 # set it manually
 
-      # miclocations
-	  pos = ''
-	  temp = ''
+      # miclocations, save file names
+	  pos = 'ralph_test'
+	  temp = '6'
 	  
-	  root_dirs = [r'D:\july_15_epoch_tests'+pos+temp, r'E:\july_15_epoch_tests'+pos+temp]
+	  
+	  #enter root directory to save data
+	  root_dir = os.path.join(r'C:\data\ralph_dan_calibration', pos+temp)
+	  #root_dirs = [r'D:\Cohorts\july_19_audio'+pos+temp, r'E:\july_19_video'+pos+temp]
+	  print ("ROOT DIRS: ", root_dir)
 
     		  	  
-	  #  ***************** TEST AUDIO *************************
-	  if False:
+	  #  ***************** (optional) CALIBRATION AUDIO TEST *************************
+	  
+	  #move to False if you are not doing audio calibration tes
+	  if True:
 	      n_epochs = 1
-
 	      
 		  #temp = '20000Hz'
-
 		  #temp = 'USV_6'
 		  #temp = 'USV_9'
 		  #temp = 'USV_10'
@@ -43,44 +52,54 @@ if __name__ == '__main__':
 		  #wav_fname = r"C:\data\data\waves\USVs\tests\2020-3-15_03_51_56_415333_snippet_17.wav"
 
 	  # ***************** RECORD ANIMALS*******************
-	  else:
-		 	  
-		  # number of epochs of recording:
-		  n_epochs = 1
-		      
+	
+	  # make default directories
+	  # Make audio directories on Drive D
+	  try: 
+		  os.mkdir(root_dir)
+	  except:
+		  print('Warning, directory already exists. Exiting')
+		  quit()
+	  try:
+		  os.mkdir(os.path.join(root_dir,'audio'))
+	  except:
+		  pass
+
+	  # Make video/timestamp directories on Drive E
+	 # try: 
+	#	  os.mkdir(root_dirs[1])
+	#  except:
+	#	  pass
+		  
+	  try:
+		  os.mkdir(os.path.join(root_dir,'video'))
+	  except:
+		  pass
+
+	  try:
+		  os.mkdir(os.path.join(root_dir,'times'))
+	  except:
+		  pass			
 	  
-	  start_time = datetime.datetime.utcnow()
-	  start_time = start_time - datetime.timedelta(hours=4)
-	  start_time = start_time.strftime('%Y-%m-%d %H:%M:%S.%f').replace(" ", "_").replace(":","_")
-	  print ("START TIME: ", start_time)
-	  
-	  for root_dir in root_dirs:
-		  try: 
-			  os.mkdir(root_dir)
-		  except:
-			  pass
-				
-		  try:
-			  os.mkdir(os.path.join(root_dir,'video'))
-		  except:
-			  pass
-		  try:
-			  os.mkdir(os.path.join(root_dir,'audio'))
-		  except:
-			  pass
-		  try:
-			  os.mkdir(os.path.join(root_dir,'times'))
-		  except:
-			  pass			
-		
+	  # ******************************** EPOCH LOOPS ****************
+	  # loop over all epochs requested
 	  for epoch in range(n_epochs):
-		  print ("RECORDING EPOCH # :", epoch, "  duration: ", duration,  " sec")
+		  	      	  
+		  start_time = datetime.datetime.utcnow()
+		  start_time = start_time - datetime.timedelta(hours=4)
+		  start_time = start_time.strftime('%Y-%m-%d %H:%M:%S.%f').replace(" ", "_").replace(":","_").replace("-","_").replace(".","_")
+
+		  print ("")
+		  print ("")
+		  print ("")
+		  	  
+		  print ("RECORDING EPOCH # :", epoch, " / ", n_epochs, "START TIME: ", start_time, "  duration: ", duration,  " sec")
 		  processes = (
 			### #r'c:\data\record_multiple_streams\play_beeps2.py'+" "+root_dir+ " " + duration,
-			#r'c:\data\record_multiple_streams\ttl_pulse.py'+" "+root_dirs[1]+ " " + duration+" "+wav_fname+" "+start_time,
-			#r'c:\data\record_multiple_streams\play_wav.py'+" "+root_dirs[1]+ " " + duration+" "+wav_fname+" "+start_time,
-			r'c:\data\record_multiple_streams\record_video.py'+" "+root_dirs[1]+ " " + duration+" "+start_time,
-			r'c:\data\record_multiple_streams\record_audio.py'+" "+root_dirs[0]+ " " + duration+" "+start_time)                                    
+			#r'c:\data\record_multiple_streams\ttl_pulse.py'+" "+root_dir+ " " + duration+" "+wav_fname+" "+start_time,
+			#r'c:\data\record_multiple_streams\play_wav.py'+" "+root_dir+ " " + duration+" "+wav_fname+" "+start_time,
+			r'c:\data\record_multiple_streams\record_audio.py'+" "+root_dir+ " " + duration+" "+start_time,
+			r'c:\data\record_multiple_streams\record_video.py'+" "+root_dir+ " " + duration+" "+start_time)
 			
 		  with Pool(3) as pool:
 			  res = pool.map(run_process, processes)
@@ -88,3 +107,7 @@ if __name__ == '__main__':
 		  pool.close
 		  
 		  time.sleep(1)
+		  
+		  print ("")
+		  print ("")
+		  print ("")
